@@ -1,3 +1,15 @@
+#settings
+*/.settings
+
+#debug_release
+*/Debug/
+*/debug/
+*/Release
+*/release
+
+#workspace metadata
+.metadata/
+
 # Prerequisites
 *.d
 
