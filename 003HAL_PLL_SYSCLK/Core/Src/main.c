@@ -84,7 +84,7 @@ void SystemClock_Config(void)
 			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
 	ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
 	ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	ClkInit.APB1CLKDivider = RCC_HCLK_DIV2;
+	ClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
 	ClkInit.APB2CLKDivider = RCC_HCLK_DIV2;
 	ret = HAL_RCC_ClockConfig(&ClkInit, FLASH_ACR_LATENCY_3WS);		/* Set the correct flash latency */
 	if(ret != HAL_OK) {
