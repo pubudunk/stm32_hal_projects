@@ -11,11 +11,20 @@
 #include <stdio.h>
 #include <string.h>
 
+
+enum AHB_FREQ {
+	AHB_FREQ_120MHZ=0,
+	AHB_FREQ_180MHZ
+};
+
+
 void UART1_Init(void);
 void ErrorHandler(void);
-void SystemClock_Config(void);
+void SystemClock_Config(enum AHB_FREQ freq);
 
 UART_HandleTypeDef huart1;
+
+
 
 int main(void)
 {
@@ -24,7 +33,7 @@ int main(void)
 	/* Init HAL */
 	HAL_Init();
 
-	SystemClock_Config();
+	SystemClock_Config(AHB_FREQ_180MHZ);
 
 	/* Init UART1 After changing clocks*/
 	UART1_Init();
@@ -51,15 +60,18 @@ int main(void)
 	return 0;
 }
 
-void SystemClock_Config(void)
+void SystemClock_Config(enum AHB_FREQ freq)
 {
 	HAL_StatusTypeDef ret = HAL_ERROR;
 
 	RCC_OscInitTypeDef OscInit;
 	RCC_ClkInitTypeDef ClkInit;
+	uint32_t FLatency;
+
+	memset(&OscInit, 0, sizeof(OscInit));
+	memset(&ClkInit, 0, sizeof(ClkInit));
 
 	/* Configure and Enable HSE */
-	memset(&OscInit, 0, sizeof(OscInit));
 	OscInit.OscillatorType = RCC_OSCILLATORTYPE_HSI;
 	OscInit.HSIState = RCC_HSI_ON;
 	OscInit.HSICalibrationValue = 16;
@@ -68,25 +80,67 @@ void SystemClock_Config(void)
 	OscInit.LSIState = RCC_LSI_OFF;
 	OscInit.PLL.PLLState = RCC_PLL_ON;
 	OscInit.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-	OscInit.PLL.PLLM = 8;	/* HSI 16MHz To get SYSCLK 120MHz M=16, N=240, P=2 */
-	OscInit.PLL.PLLN = 120;
-	OscInit.PLL.PLLP = 2;
-	OscInit.PLL.PLLQ = 2;
+
+	switch(freq)
+	{
+	case AHB_FREQ_120MHZ:
+		OscInit.PLL.PLLM = 8;	/* HSI 16MHz To get AHB CLK 120MHz M=8, N=120, P=2 */
+		OscInit.PLL.PLLN = 120;
+		OscInit.PLL.PLLP = 2;
+		OscInit.PLL.PLLQ = 2;
+
+		/* Configure SYSCLK */
+
+		ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+				| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+		ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+		ClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
+		ClkInit.APB2CLKDivider = RCC_HCLK_DIV2;
+
+		FLatency = FLASH_ACR_LATENCY_3WS;	/* Set the correct flash latency */
+
+		break;
+	case AHB_FREQ_180MHZ:
+
+		/* Enable the clock for the power controller */
+		__HAL_RCC_PWR_CLK_ENABLE();
+
+		/* regulator voltage scale 1 */
+		__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+		/* Enable the over drive mode */
+		__HAL_PWR_OVERDRIVE_ENABLE();
+
+		OscInit.PLL.PLLM = 8;	/* HSI 16MHz To get AHB CLK 180MHz M=8, N=180, P=2 */
+		OscInit.PLL.PLLN = 180;
+		OscInit.PLL.PLLP = 2;
+		OscInit.PLL.PLLQ = 2;
+
+		/* Configure SYSCLK */
+
+		ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+				| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+		ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+		ClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
+		ClkInit.APB2CLKDivider = RCC_HCLK_DIV2;
+
+		FLatency = FLASH_ACR_LATENCY_5WS;	/* Set the correct flash latency */
+
+		break;
+	default:
+		break;
+	}
+
 	ret = HAL_RCC_OscConfig(&OscInit);
 	if(ret != HAL_OK) {
 		/* Error happened. Trap */
 		ErrorHandler();
 	}
 
-	/* Configure SYSCLK */
-	memset(&ClkInit, 0, sizeof(ClkInit));
-	ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
-			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
-	ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	ClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
-	ClkInit.APB2CLKDivider = RCC_HCLK_DIV2;
-	ret = HAL_RCC_ClockConfig(&ClkInit, FLASH_ACR_LATENCY_3WS);		/* Set the correct flash latency */
+
+	ret = HAL_RCC_ClockConfig(&ClkInit, FLatency);
 	if(ret != HAL_OK) {
 		/* Error happened. Trap */
 		ErrorHandler();
