@@ -17,7 +17,6 @@ void ErrorHandler(void);
 void GPIO_Init(void);
 void Timer2_Init(void);
 void UART1_Init(void);
-void GPIO_Init(void);
 
 TIM_HandleTypeDef htim2;	/* To input capture */
 
@@ -42,9 +41,6 @@ int main(void)
 
 	/* Init timer 2 */
 	Timer2_Init();
-
-	/* External clock out */
-	GPIO_Init();
 
 	/* Init UART1 */
 	UART1_Init();
@@ -413,20 +409,6 @@ void UART1_Init(void)
 		/* Error happened. Trap */
 		ErrorHandler();
 	}
-}
-
-void GPIO_Init(void)
-{
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-
-	GPIO_InitTypeDef ClkOutGPIO;
-	ClkOutGPIO.Mode = GPIO_MODE_OUTPUT_PP;
-	ClkOutGPIO.Pull = GPIO_NOPULL;
-	ClkOutGPIO.Pin = GPIO_PIN_8;
-	ClkOutGPIO.Alternate = 0;
-	ClkOutGPIO.Speed = GPIO_SPEED_FREQ_LOW;
-
-	HAL_GPIO_Init(GPIOA, &ClkOutGPIO);
 }
 
 uint32_t uiCCRRegVal = 0;
