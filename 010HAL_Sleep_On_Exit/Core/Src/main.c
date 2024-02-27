@@ -36,7 +36,7 @@ int main(void)
 		ErrorHandler();
 	}
 
-	SystemClock_Config_HSE(AHB_FREQ_50MHZ);
+	//SystemClock_Config_HSE(AHB_FREQ_50MHZ);
 
 	/* Init Timer6 */
 	Timer7_Init();
@@ -83,11 +83,11 @@ void UART1_Init(void)
 	huart1.Instance = USART1;
 
 	/* Set USART1 communication params */
-	huart1.Init.BaudRate = 115200;
+	huart1.Init.BaudRate = 460800;
 	huart1.Init.WordLength = UART_WORDLENGTH_8B;
 	huart1.Init.StopBits = UART_STOPBITS_1;
 	huart1.Init.Parity = UART_PARITY_NONE;
-	huart1.Init.Mode = UART_MODE_TX_RX;
+	huart1.Init.Mode = UART_MODE_TX;
 	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
 
 	ret = HAL_UART_Init(&huart1);
