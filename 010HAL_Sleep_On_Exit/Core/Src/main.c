@@ -16,6 +16,7 @@ void Timer7_Init(void);
 void GPIO_Init(void);
 void UART1_Init(void);
 void SystemClock_Config_HSE(enum AHB_FREQ freq);
+void GPIOA_Analog_Config(void);
 
 void Log_Message(const char *pcMessage);
 
@@ -45,6 +46,9 @@ int main(void)
 
 	/* Init UART1 */
 	UART1_Init();
+
+	/* Set Unused GPIO pins to analog mode to save power */
+	GPIOA_Analog_Config();
 
 	/* Enable Sleep on exit */
 	HAL_PWR_EnableSleepOnExit();
@@ -248,4 +252,20 @@ void SystemClock_Config_HSE(enum AHB_FREQ freq)
 	/* Configure SYSTICK */
 	HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 	HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+}
+
+void GPIOA_Analog_Config(void)
+{
+	GPIO_InitTypeDef gpioA;
+
+	uint32_t gpio_pins = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | \
+			GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | \
+			GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | \
+			GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | \
+			GPIO_PIN_14 | GPIO_PIN_15;
+
+	gpioA.Pin = gpio_pins;
+	gpioA.Mode = GPIO_MODE_ANALOG;
+
+	HAL_GPIO_Init(GPIOA, &gpioA);
 }
