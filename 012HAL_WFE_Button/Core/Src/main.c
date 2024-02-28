@@ -1,0 +1,272 @@
+/*
+ * main.c
+ *
+ *  Created on: Jan 21, 2024
+ *      Author: pubudukarunaratna
+ */
+
+
+#include <main.h>
+#include <stdio.h>
+#include <string.h>
+
+
+void ErrorHandler(void);
+void GPIO_Init(void);
+void UART1_Init(void);
+void SystemClock_Config_HSE(enum AHB_FREQ freq);
+void GPIOA_Analog_Config(void);
+
+void Log_Message(const char *pcMessage);
+
+UART_HandleTypeDef huart1;
+
+char uart_data[] = "We are testing Wait for Event\r\n";
+
+int main(void)
+{
+	HAL_StatusTypeDef ret = HAL_ERROR;
+
+	/* Init HAL */
+	ret = HAL_Init();
+	if(ret != HAL_OK) {
+		ErrorHandler();
+	}
+
+	//SystemClock_Config_HSE(AHB_FREQ_50MHZ);
+
+	GPIO_Init();
+
+	/* Init UART1 */
+	UART1_Init();
+
+	/* Set Unused GPIO pins to analog mode to save power */
+	GPIOA_Analog_Config();
+
+	for(;;)
+	{
+		Log_Message(uart_data);
+		Log_Message("Going to sleep\r\n");
+
+		HAL_SuspendTick();
+
+		__WFE();	/* Going to sleep */
+		__WFE();	/* Going to sleep */ /* Required two times. May be the first time only clears the event bit */
+
+		HAL_ResumeTick();
+
+		Log_Message("Woke Up\r\n");
+	}
+
+	return 0;
+}
+
+void UART1_Init(void)
+{
+	HAL_StatusTypeDef ret = HAL_ERROR;
+
+	/* Set the Base address of USASRT 1 base address */
+	huart1.Instance = USART1;
+
+	/* Set USART1 communication params */
+	huart1.Init.BaudRate = 460800;
+	huart1.Init.WordLength = UART_WORDLENGTH_8B;
+	huart1.Init.StopBits = UART_STOPBITS_1;
+	huart1.Init.Parity = UART_PARITY_NONE;
+	huart1.Init.Mode = UART_MODE_TX;
+	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+
+	ret = HAL_UART_Init(&huart1);
+	if(ret != HAL_OK) {
+		/* Error happened. Trap */
+		ErrorHandler();
+	}
+}
+
+void Log_Message(const char *pcMessage)
+{
+	HAL_StatusTypeDef ret = 0;
+	char pcUsrMsg[100];
+
+	snprintf( pcUsrMsg, sizeof(pcUsrMsg), "%s",pcMessage );
+	HAL_UART_Transmit( &huart1, (uint8_t *)pcUsrMsg, strlen(pcUsrMsg), HAL_MAX_DELAY );
+	if(ret != HAL_OK) {
+		/* Error happened. Trap */
+		ErrorHandler();
+	}
+}
+
+void ErrorHandler(void)
+{
+	for(;;)
+	{
+		/* Error handle code */
+	}
+}
+
+void SystemClock_Config_HSE(enum AHB_FREQ freq)
+{
+	HAL_StatusTypeDef ret = HAL_ERROR;
+
+	RCC_OscInitTypeDef OscInit;
+	RCC_ClkInitTypeDef ClkInit;
+	uint32_t FLatency;
+
+	memset(&OscInit, 0, sizeof(OscInit));
+	memset(&ClkInit, 0, sizeof(ClkInit));
+
+	/* Configure and Enable HSE */
+	OscInit.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+	OscInit.HSIState = RCC_HSI_OFF;
+	OscInit.HSICalibrationValue = 0;
+	OscInit.LSEState = RCC_LSE_OFF;
+	OscInit.HSEState = RCC_HSE_ON;
+	OscInit.LSIState = RCC_LSI_OFF;
+	OscInit.PLL.PLLState = RCC_PLL_ON;
+	OscInit.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+
+	switch(freq)
+	{
+	case AHB_FREQ_50MHZ:
+		OscInit.PLL.PLLM = 4;	/* HSI 16MHz To get AHB CLK 50MHz M=8, N=50, P=2 */
+		OscInit.PLL.PLLN = 50;
+		OscInit.PLL.PLLP = RCC_PLLP_DIV2;
+		OscInit.PLL.PLLQ = 2;	/* This is not used. Just use the default config value */
+
+		/* Configure SYSCLK */
+
+		ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+				| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+		ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+		ClkInit.APB1CLKDivider = RCC_HCLK_DIV2;		/* APB1 25Mhz */
+		ClkInit.APB2CLKDivider = RCC_HCLK_DIV1;
+
+		FLatency = FLASH_ACR_LATENCY_1WS;	/* Set the correct flash latency */
+
+		break;
+	case AHB_FREQ_84MHZ:
+		OscInit.PLL.PLLM = 4;	/* HSI 16MHz To get AHB CLK 84MHz M=8, N=84, P=2 */
+		OscInit.PLL.PLLN = 84;
+		OscInit.PLL.PLLP = RCC_PLLP_DIV2;
+		OscInit.PLL.PLLQ = 2;	/* This is not used. Just use the default config value */
+
+		/* Configure SYSCLK */
+
+		ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+				| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+		ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+		ClkInit.APB1CLKDivider = RCC_HCLK_DIV2;		/* APB1 25Mhz */
+		ClkInit.APB2CLKDivider = RCC_HCLK_DIV1;
+
+		FLatency = FLASH_ACR_LATENCY_2WS;	/* Set the correct flash latency */
+
+		break;
+	case AHB_FREQ_120MHZ:
+		OscInit.PLL.PLLM = 4;	/* HSI 16MHz To get AHB CLK 120MHz M=8, N=120, P=2 */
+		OscInit.PLL.PLLN = 120;
+		OscInit.PLL.PLLP = RCC_PLLP_DIV2;
+		OscInit.PLL.PLLQ = 2;	/* This is not used. Just use the default config value */
+
+		/* Configure SYSCLK */
+
+		ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+				| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+		ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+		ClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
+		ClkInit.APB2CLKDivider = RCC_HCLK_DIV2;
+
+		FLatency = FLASH_ACR_LATENCY_3WS;	/* Set the correct flash latency */
+
+		break;
+	case AHB_FREQ_180MHZ:
+
+		/* Enable the clock for the power controller */
+		__HAL_RCC_PWR_CLK_ENABLE();
+
+		/* regulator voltage scale 1 */
+		__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+		/* Enable the over drive mode */
+		__HAL_PWR_OVERDRIVE_ENABLE();
+
+		OscInit.PLL.PLLM = 4;	/* HSI 16MHz To get AHB CLK 180MHz M=8, N=180, P=2 */
+		OscInit.PLL.PLLN = 180;
+		OscInit.PLL.PLLP = RCC_PLLP_DIV2;
+		OscInit.PLL.PLLQ = 2;
+
+		/* Configure SYSCLK */
+
+		ClkInit.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+				| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+		ClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		ClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+		ClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
+		ClkInit.APB2CLKDivider = RCC_HCLK_DIV2;
+
+		FLatency = FLASH_ACR_LATENCY_5WS;	/* Set the correct flash latency */
+
+		break;
+	default:
+		break;
+	}
+
+	ret = HAL_RCC_OscConfig(&OscInit);
+	if(ret != HAL_OK) {
+		/* Error happened. Trap */
+		ErrorHandler();
+	}
+
+
+	ret = HAL_RCC_ClockConfig(&ClkInit, FLatency);
+	if(ret != HAL_OK) {
+		/* Error happened. Trap */
+		ErrorHandler();
+	}
+
+	/* Configure SYSTICK */
+	HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+	HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+}
+
+void GPIO_Init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	GPIO_InitStruct.Pin = GPIO_PIN_0;
+	GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+#if 0
+	/* EXTI interrupt init*/
+	HAL_NVIC_SetPriority(EXTI0_IRQn, 14, 0);
+	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+#endif
+
+}
+
+void GPIOA_Analog_Config(void)
+{
+	GPIO_InitTypeDef gpioA;
+
+	uint32_t gpio_pins = GPIO_PIN_1 | GPIO_PIN_2 | \
+			GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | \
+			GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | \
+			GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | \
+			GPIO_PIN_14 | GPIO_PIN_15;
+
+	gpioA.Pin = gpio_pins;
+	gpioA.Mode = GPIO_MODE_ANALOG;
+
+	HAL_GPIO_Init(GPIOA, &gpioA);
+}
+
+#if 0
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	Log_Message(uart_data);
+}
+#endif
