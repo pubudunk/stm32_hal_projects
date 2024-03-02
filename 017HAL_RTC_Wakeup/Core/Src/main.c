@@ -17,6 +17,8 @@ void UART1_Init(void);
 void SystemClock_Config_HSE(enum AHB_FREQ freq);
 void RTC_Init(void);
 void RTC_Calandar_Config(void);
+void RTC_Alarm_Config(void);
+void RTC_Print_Date_Time(void);
 
 void Log_Message(const char *pcMessage);
 
@@ -44,25 +46,29 @@ int main(void)
 	/* Init RTC */
 	RTC_Init();
 
-	Log_Message("RTC Calendar Application\r\n");
+	/* Enable clock for PWR controller block */
+
+	__HAL_RCC_PWR_CLK_ENABLE();
+
+	Log_Message("RTC Wake-up Application\r\n");
+
+	RTC_Calandar_Config();
+	RTC_Alarm_Config();
+	RTC_Print_Date_Time();
 
 	if(__HAL_PWR_GET_FLAG(PWR_FLAG_SB) != RESET) {
 
 		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_SB);
 		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU);
+		__HAL_RTC_ALARM_CLEAR_FLAG(&hrtc, RTC_FLAG_ALRAF);
 
 		Log_Message("Woke up from Standby\r\n");
-		HAL_GPIO_EXTI_Callback(0);
+		RTC_Print_Date_Time();
 	}
-
-	// RTC_Calandar_Config();	// Disabled after first set the calendar
 
 	Log_Message("Going to standby mode\r\n");
 
-	/* Enable wake-up PA0 */
-	HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1);
-
-	HAL_PWR_EnterSTANDBYMode();
+	//HAL_PWR_EnterSTANDBYMode();
 
 
 	for(;;)
@@ -262,7 +268,8 @@ void RTC_Init(void)
 	int ret = HAL_OK;
 
 	hrtc.Instance = RTC;
-	hrtc.Init.HourFormat = RTC_HOURFORMAT_12;
+	hrtc.Init.HourFormat = RTC_HOURFORMAT_24;	/* For 24 format exercise */
+	//hrtc.Init.HourFormat = RTC_HOURFORMAT_12;
 	hrtc.Init.AsynchPrediv = 127;
 	hrtc.Init.SynchPrediv = 249;
 	hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
@@ -279,14 +286,14 @@ void RTC_Init(void)
 
 void RTC_Calandar_Config(void)
 {
-	/* Setting TIme- 6:15:10 PM Date- 1 March 2024 Friday */
+	/* Setting TIme- 23:15:15  Date- 1 March 2024 Friday */
 	RTC_TimeTypeDef stRTCTime = {0};
 	RTC_DateTypeDef stRTCDate = {0};
 
-	stRTCTime.Hours = 6;
+	stRTCTime.Hours = 23;
 	stRTCTime.Minutes = 15;
-	stRTCTime.Seconds = 10;
-	stRTCTime.TimeFormat = RTC_HOURFORMAT12_PM;
+	stRTCTime.Seconds = 15;
+	//stRTCTime.TimeFormat = RTC_HOURFORMAT12_AM;
 	HAL_RTC_SetTime(&hrtc, &stRTCTime, RTC_FORMAT_BIN);
 
 	stRTCDate.Date = 1;
@@ -296,14 +303,39 @@ void RTC_Calandar_Config(void)
 	HAL_RTC_SetDate(&hrtc, &stRTCDate, RTC_FORMAT_BIN);
 }
 
-char * GetDayofWeek(uint8_t day)
+void RTC_Alarm_Config(void)
+{
+	int ret = HAL_OK;
+	RTC_AlarmTypeDef stRTCAlarmA = {0};
+	/* Set alarm xx:45:09 */
+
+	/* De-activate any active alarms. May be not required */
+	HAL_RTC_DeactivateAlarm(&hrtc, RTC_ALARM_A);
+
+	stRTCAlarmA.Alarm = RTC_ALARM_A;
+	stRTCAlarmA.AlarmTime.Hours = 23;
+	stRTCAlarmA.AlarmTime.Minutes = 15;
+	stRTCAlarmA.AlarmTime.Seconds = 30;
+	stRTCAlarmA.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY; /* day/date don't care */
+	stRTCAlarmA.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_NONE;
+
+	ret = HAL_RTC_SetAlarm_IT(&hrtc, &stRTCAlarmA, RTC_FORMAT_BIN);
+	if(ret != HAL_OK) {
+		/* Error happened. Trap */
+		ErrorHandler();
+	}
+
+	Log_Message("RTC Alarm config complete\r\n");
+}
+
+char* GetDayofWeek(uint8_t day)
 {
 	char *weekday[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
 	return weekday[day-1];
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+void RTC_Print_Date_Time(void)
 {
 	char buffer[100] = {0};
 	RTC_TimeTypeDef stRTCTime = {0};
@@ -320,4 +352,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	snprintf(buffer, sizeof(buffer), "Current Date is: %02d-%02d-%02d %s\r\n", stRTCDate.Month,
 			stRTCDate.Date, stRTCDate.Year, GetDayofWeek(stRTCDate.WeekDay));
 	Log_Message(buffer);
+
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+//	RTC_Calandar_Config();
+//
+//	Log_Message("RTC Time set\r\n");
+//	RTC_Print_Date_Time();
+//
+//	RTC_Alarm_Config();
+//
+//	HAL_PWR_EnterSTANDBYMode();
+//
+}
+
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
+{
+	Log_Message("RTC Alarm A triggered\r\n");
+	RTC_Print_Date_Time();
 }
