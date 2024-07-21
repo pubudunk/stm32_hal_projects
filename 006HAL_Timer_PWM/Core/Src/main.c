@@ -356,25 +356,25 @@ void Timer2_Init(void)
 
 	sTim2OCConfig.OCMode = TIM_OCMODE_PWM1;
 	sTim2OCConfig.OCPolarity = TIM_OCPOLARITY_HIGH;
-	sTim2OCConfig.Pulse = (htim2.Init.Prescaler * 25 / 100); 	/* 25% duty cycle */
+	sTim2OCConfig.Pulse = (htim2.Init.Period * 25 / 100); 	/* 25% duty cycle */
 	ret = HAL_TIM_PWM_ConfigChannel(&htim2, &sTim2OCConfig, TIM_CHANNEL_1);
 	if(ret != HAL_OK) {
 		ErrorHandler();
 	}
 
-	sTim2OCConfig.Pulse = (htim2.Init.Prescaler * 45 / 100); 	/* 45% duty cycle */
+	sTim2OCConfig.Pulse = (htim2.Init.Period * 45 / 100); 	/* 45% duty cycle */
 	ret = HAL_TIM_PWM_ConfigChannel(&htim2, &sTim2OCConfig, TIM_CHANNEL_2);
 	if(ret != HAL_OK) {
 		ErrorHandler();
 	}
 
-	sTim2OCConfig.Pulse = (htim2.Init.Prescaler * 75 / 100); 	/* 75% duty cycle */
+	sTim2OCConfig.Pulse = (htim2.Init.Period * 75 / 100); 	/* 75% duty cycle */
 	ret = HAL_TIM_PWM_ConfigChannel(&htim2, &sTim2OCConfig, TIM_CHANNEL_3);
 	if(ret != HAL_OK) {
 		ErrorHandler();
 	}
 
-	sTim2OCConfig.Pulse = (htim2.Init.Prescaler * 95 / 100); 	/* 95% duty cycle */
+	sTim2OCConfig.Pulse = (htim2.Init.Period * 95 / 100); 	/* 95% duty cycle */
 	ret = HAL_TIM_PWM_ConfigChannel(&htim2, &sTim2OCConfig, TIM_CHANNEL_4);
 	if(ret != HAL_OK) {
 		ErrorHandler();
